@@ -5,6 +5,11 @@ from supabase import create_client, Client
 import openai
 import os
 import numpy as np
+from dotenv import load_dotenv
+
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Initialize FastMCP server
 mcp = FastMCP("KnoliaConnectMCP")
