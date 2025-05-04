@@ -1,0 +1,12 @@
+version: '3.9'
+
+services:
+  connect-server:
+    build:
+      context: ./connect-server
+    container_name: connect-mcp
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./connect-server/.env
+    restart: unless-stopped
