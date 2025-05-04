@@ -77,7 +77,7 @@ def delete_profile(user_id: str, ctx: Context):
 
 # Tool to find matches
 @mcp.tool()
-def find_matches(user_id: str, top_k: int = 5, ctx: Context):
+def find_matches(user_id: str,  ctx: Context, top_k: int = 5):
     # Retrieve the user's embedding
     user_data = supabase.table("user_connect_profiles").select("embedded_vector").eq("user_id", user_id).execute()
     if not user_data.data:
