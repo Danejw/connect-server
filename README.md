@@ -69,7 +69,7 @@ Matches are found by retrieving all other embedded connect profiles and calculat
 
 ```bash
 pip install -r requirements.txt
-python connect_mcp_server.main.py
+python connect_mcp_server/main.py
 ```
 
 ## Docker
