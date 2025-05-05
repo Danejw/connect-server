@@ -59,7 +59,7 @@ def get_embedding(text: str) -> List[float]:
 def create_profile(profile: ConnectProfile, ctx: Context):
     serialized = serialize_profile(profile)
     embedding = get_embedding(serialized)
-    data = profile.dict()
+    data = profile.model_dump()
     data["embedded_vector"] = embedding
     supabase.table("user_connect_profiles").insert(data).execute()
     return {"status": "Profile created", "user_id": profile.user_id}
@@ -69,7 +69,7 @@ def create_profile(profile: ConnectProfile, ctx: Context):
 def update_profile(profile: ConnectProfile, ctx: Context):
     serialized = serialize_profile(profile)
     embedding = get_embedding(serialized)
-    data = profile.dict()
+    data = profile.model_dump()
     data["embedded_vector"] = embedding
     supabase.table("user_connect_profiles").update(data).eq("user_id", profile.user_id).execute()
     return {"status": "Profile updated", "user_id": profile.user_id}

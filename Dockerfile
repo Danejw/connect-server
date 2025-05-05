@@ -15,4 +15,4 @@ COPY . .
 ENV PYTHONUNBUFFERED=1
 
 # Run the MCP server
-CMD ["python", "main.py"]
+CMD ["python", "connect-mcp-server/main.py"]
