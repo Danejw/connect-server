@@ -163,6 +163,5 @@ def find_matches(user_id: str, top_k: int = 5):
 
 # Run the MCP server
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8001))
-    mcp.run(host="0.0.0.0", port=port)
+    mcp.run()
 

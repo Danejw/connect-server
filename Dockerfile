@@ -17,4 +17,4 @@ COPY . .
 ENV PYTHONUNBUFFERED=1
 
 # Run the MCP server
-CMD ["python", "connect_mcp_server/main.py"]
+CMD ["uvicorn", "connect_mcp_server.main:app", "--host", "0.0.0.0", "--port", "$PORT"]
