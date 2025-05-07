@@ -72,6 +72,11 @@ pip install -r requirements.txt
 python connect_mcp_server/main.py
 ```
 
+## Run locally with Uvicorn
+```bash
+python -m uvicorn connect_mcp_server.main:mcp --reload
+```
+
 ## Docker
 
 ```bash
