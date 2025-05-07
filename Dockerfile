@@ -2,7 +2,7 @@
 FROM python:3.11-slim
 
 # Set work directory
-WORKDIR /
+WORKDIR /app
 
 # Install dependencies
 COPY requirements.txt .
@@ -17,4 +17,4 @@ COPY . .
 ENV PYTHONUNBUFFERED=1
 
 # Run the MCP server
-CMD ["python", "connect-mcp-server/main.py"]
+CMD ["python", "connect_mcp_server/main.py"]
