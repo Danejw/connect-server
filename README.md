@@ -60,10 +60,15 @@ Honolulu, HI
 * `update_profile`
 * `delete_profile`
 * `find_matches`
+* `explain_match`
 
 ## Matching Logic
 
 Matches are found by retrieving all other embedded connect profiles and calculating the cosine similarity between the requesting user and other users. Matches are filtered and sorted by similarity score to find the most aligned companions.
+
+### Explainable Matching
+
+The `explain_match` endpoint returns the similarity score between two users and any shared personality tags. This makes it clearer why a potential match was suggested.
 
 ## Local Dev
 
