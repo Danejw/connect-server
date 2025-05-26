@@ -173,6 +173,40 @@ def find_matches(user_id: str, top_k: int = 5):
     matches.sort(key=lambda x: x["score"], reverse=True)
     return matches[:top_k]
 
+# Tool to explain why two users were matched
+@mcp.tool()
+@app.get("/explain_match")
+def explain_match(user_id: str, match_user_id: str):
+    """Return similarity metrics and shared personality tags between two users."""
+
+    user_1 = (
+        supabase.table("user_connect_profiles")
+        .select("embedded_vector", "personality_tags")
+        .eq("user_id", user_id)
+        .execute()
+    )
+    if not user_1.data:
+        return {"error": "User profile not found."}
+
+    user_2 = (
+        supabase.table("user_connect_profiles")
+        .select("embedded_vector", "personality_tags")
+        .eq("user_id", match_user_id)
+        .execute()
+    )
+    if not user_2.data:
+        return {"error": "Match profile not found."}
+
+    vec1 = np.array(user_1.data[0]["embedded_vector"])
+    vec2 = np.array(user_2.data[0]["embedded_vector"])
+    similarity = float(np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2)))
+
+    tags1 = set(user_1.data[0].get("personality_tags", []))
+    tags2 = set(user_2.data[0].get("personality_tags", []))
+    shared_tags = sorted(tags1.intersection(tags2))
+
+    return {"similarity": similarity, "shared_tags": shared_tags}
+
 # Run the MCP server
 if __name__ == "__main__":
     mcp.run()

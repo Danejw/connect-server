@@ -104,3 +104,28 @@ def test_upsert_profile_update(main_module):
     result = module.upsert_profile(sample_profile(main_module), "user1")
     assert result["status"] == "Profile updated"
     table.update.return_value.eq.return_value.execute.assert_called_once()
+
+
+def test_explain_match(main_module):
+    module, sb = main_module
+    table = sb.table.return_value
+
+    select_one = MagicMock()
+    select_two = MagicMock()
+    table.select.side_effect = [select_one, select_two]
+
+    eq_one = MagicMock()
+    eq_two = MagicMock()
+    select_one.eq.return_value = eq_one
+    select_two.eq.return_value = eq_two
+
+    eq_one.execute.return_value.data = [
+        {"embedded_vector": [0.1] * 1536, "personality_tags": ["kind", "fun"]}
+    ]
+    eq_two.execute.return_value.data = [
+        {"embedded_vector": [0.1] * 1536, "personality_tags": ["fun", "smart"]}
+    ]
+
+    explanation = module.explain_match("user1", "user2")
+    assert explanation["similarity"] == pytest.approx(1.0)
+    assert explanation["shared_tags"] == ["fun"]
