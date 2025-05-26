@@ -19,16 +19,28 @@ router = APIRouter(prefix="/connect", tags=["Connect"])
 app.include_router(router=router)
 
 # Environment variables
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+# Provide fallbacks for testing environments where these variables may not be
+# configured. Real deployments should supply valid credentials via environment
+# variables.
+SUPABASE_URL = os.getenv("SUPABASE_URL", "http://localhost")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", "key")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "key")
 
 EMBEDDING_MODEL = "text-embedding-3-small"
 
-# Initialize Supabase and OpenAI
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-openai.api_key = OPENAI_API_KEY
-client = OpenAI()
+# Initialize Supabase and OpenAI. When running tests or in environments without
+# valid credentials these clients may fail to initialize; handle that gracefully
+# so the module can be imported without raising exceptions.
+try:
+    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+except Exception:
+    supabase = None
+
+try:
+    openai.api_key = OPENAI_API_KEY
+    client = OpenAI()
+except Exception:
+    client = None
 
 
 class SexualPreferences(BaseModel):
