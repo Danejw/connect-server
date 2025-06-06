@@ -8,6 +8,7 @@ from openai import OpenAI
 import os
 import numpy as np
 from dotenv import load_dotenv
+import json
 
 # Load environment variables from .env file
 load_dotenv()
@@ -143,23 +144,97 @@ def delete_profile(user_id: str):
 @mcp.tool()
 @app.post("/find_matches")
 def find_matches(user_id: str, top_k: int = 5):
-    # Retrieve the user's embedding
-    user_data = supabase.table("user_connect_profiles").select("embedded_vector").eq("user_id", user_id).execute()
-    if not user_data.data:
-        return {"error": "User profile not found."}
-    user_vector = np.array(user_data.data[0]["embedded_vector"])
+    """Get all profiles, calculate similarity scores, sort by similarity score, and return the top k profiles"""
+    try:
+        # Get the reference user's embedding
+        user_data = supabase.table("user_connect_profiles").select("embedded_vector").eq("user_id", user_id).execute()
+        if not user_data.data:
+            return {"error": "Reference user profile not found."}
+        
+        # Convert string embedding to numpy array
+        user_embedding = user_data.data[0]["embedded_vector"]
+        if isinstance(user_embedding, str):
+            user_vector = np.array(json.loads(user_embedding))
+        else:
+            user_vector = np.array(user_embedding)
+        
+        # Get random profiles (excluding the reference user)
+        all_profiles = supabase.table("user_connect_profiles").select("*").neq("user_id", user_id).execute()
+        if not all_profiles.data:
+            return {"profiles": [], "count": 0}
+                        
+        # Calculate similarity scores and prepare response
+        profiles = []
+        for profile in all_profiles.data:
+            profile_copy = profile.copy()
+            
+            # Convert string embedding to numpy array and calculate similarity score
+            other_embedding = profile_copy["embedded_vector"]
+            if isinstance(other_embedding, str):
+                other_vector = np.array(json.loads(other_embedding))
+            else:
+                other_vector = np.array(other_embedding)
+                
+            similarity = np.dot(user_vector, other_vector) / (np.linalg.norm(user_vector) * np.linalg.norm(other_vector))
+            
+            # Remove embedded_vector and add similarity score
+            profile_copy.pop("embedded_vector", None)
+            profile_copy["similarity_score"] = float(similarity)
+            profiles.append(profile_copy)
+            
+            
+            # Sort profiles by similarity score
+        profiles.sort(key=lambda x: x["similarity_score"], reverse=True)
+                            
+        return {"profiles": profiles[:top_k], "count": len(profiles), "reference_user_id": user_id}
+    except Exception as e:
+        return {"error": str(e)}
 
-    # Retrieve all other profiles
-    all_profiles = supabase.table("user_connect_profiles").select("user_id", "embedded_vector").neq("user_id", user_id).execute()
-    matches = []
-    for profile in all_profiles.data:
-        other_vector = np.array(profile["embedded_vector"])
-        similarity = np.dot(user_vector, other_vector) / (np.linalg.norm(user_vector) * np.linalg.norm(other_vector))
-        matches.append({"user_id": profile["user_id"], "score": similarity})
-
-    # Sort matches by similarity score
-    matches.sort(key=lambda x: x["score"], reverse=True)
-    return matches[:top_k]
+# Tool to get a list of profiles
+@mcp.tool()
+@app.get("/get_profiles")
+def get_profiles(user_id: str, limit: int = 10):
+    """Get a random list of profiles with similarity scores relative to the given user_id"""
+    try:
+        # Get the reference user's embedding
+        user_data = supabase.table("user_connect_profiles").select("embedded_vector").eq("user_id", user_id).execute()
+        if not user_data.data:
+            return {"error": "Reference user profile not found."}
+        
+        # Convert string embedding to numpy array
+        user_embedding = user_data.data[0]["embedded_vector"]
+        if isinstance(user_embedding, str):
+            user_vector = np.array(json.loads(user_embedding))
+        else:
+            user_vector = np.array(user_embedding)
+        
+        # Get random profiles (excluding the reference user)
+        profiles_data = supabase.table("user_connect_profiles").select("*").neq("user_id", user_id).limit(limit).execute()
+        if not profiles_data.data:
+            return {"profiles": [], "count": 0}
+                
+        # Calculate similarity scores and prepare response
+        profiles = []
+        for profile in profiles_data.data:
+            profile_copy = profile.copy()
+            
+            # Convert string embedding to numpy array and calculate similarity score
+            other_embedding = profile_copy["embedded_vector"]
+            if isinstance(other_embedding, str):
+                other_vector = np.array(json.loads(other_embedding))
+            else:
+                other_vector = np.array(other_embedding)
+                
+            similarity = np.dot(user_vector, other_vector) / (np.linalg.norm(user_vector) * np.linalg.norm(other_vector))
+            
+            # Remove embedded_vector and add similarity score
+            profile_copy.pop("embedded_vector", None)
+            profile_copy["similarity_score"] = float(similarity)
+            profiles.append(profile_copy)
+                    
+        return {"profiles": profiles, "count": len(profiles), "reference_user_id": user_id}
+    except Exception as e:
+        return {"error": str(e)}
 
 # Run the MCP server
 if __name__ == "__main__":
