@@ -20,16 +20,28 @@ router = APIRouter(prefix="/connect", tags=["Connect"])
 app.include_router(router=router)
 
 # Environment variables
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+# Provide fallbacks for testing environments where these variables may not be
+# configured. Real deployments should supply valid credentials via environment
+# variables.
+SUPABASE_URL = os.getenv("SUPABASE_URL", "http://localhost")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", "key")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "key")
 
 EMBEDDING_MODEL = "text-embedding-3-small"
 
-# Initialize Supabase and OpenAI
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-openai.api_key = OPENAI_API_KEY
-client = OpenAI()
+# Initialize Supabase and OpenAI. When running tests or in environments without
+# valid credentials these clients may fail to initialize; handle that gracefully
+# so the module can be imported without raising exceptions.
+try:
+    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+except Exception:
+    supabase = None
+
+try:
+    openai.api_key = OPENAI_API_KEY
+    client = OpenAI()
+except Exception:
+    client = None
 
 
 class SexualPreferences(BaseModel):
@@ -235,6 +247,40 @@ def get_profiles(user_id: str, limit: int = 10):
         return {"profiles": profiles, "count": len(profiles), "reference_user_id": user_id}
     except Exception as e:
         return {"error": str(e)}
+
+# Tool to explain why two users were matched
+@mcp.tool()
+@app.get("/explain_match")
+def explain_match(user_id: str, match_user_id: str):
+    """Return similarity metrics and shared personality tags between two users."""
+
+    user_1 = (
+        supabase.table("user_connect_profiles")
+        .select("embedded_vector", "personality_tags")
+        .eq("user_id", user_id)
+        .execute()
+    )
+    if not user_1.data:
+        return {"error": "User profile not found."}
+
+    user_2 = (
+        supabase.table("user_connect_profiles")
+        .select("embedded_vector", "personality_tags")
+        .eq("user_id", match_user_id)
+        .execute()
+    )
+    if not user_2.data:
+        return {"error": "Match profile not found."}
+
+    vec1 = np.array(user_1.data[0]["embedded_vector"])
+    vec2 = np.array(user_2.data[0]["embedded_vector"])
+    similarity = float(np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2)))
+
+    tags1 = set(user_1.data[0].get("personality_tags", []))
+    tags2 = set(user_2.data[0].get("personality_tags", []))
+    shared_tags = sorted(tags1.intersection(tags2))
+
+    return {"similarity": similarity, "shared_tags": shared_tags}
 
 # Run the MCP server
 if __name__ == "__main__":
