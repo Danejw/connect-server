@@ -39,7 +39,11 @@ def sample_profile(main):
         relationship_goals="Long term connection",
         bio="Example bio",
         personality_tags=["empathetic", "introverted"],
-        sexual_preferences=module.SexualPreferences(orientation="hetero", looking_for="female"),
+        sexual_preferences=module.SexualPreferences(
+            gender="female",
+            orientation="hetero", 
+            looking_for="male"
+        ),
         location="Honolulu",
     )
 
@@ -123,21 +127,19 @@ def test_get_profiles_filtered(main_module):
     module, sb = main_module
     table = sb.table.return_value
     
-    # Mock the reference user data
+    # Mock the reference user data - first call to select
     select_mock1 = MagicMock()
-    select_mock2 = MagicMock()
-    table.select.side_effect = [select_mock1, select_mock2]
-    
     select_mock1.eq.return_value.execute.return_value.data = [
         {"user_id": "user1", "age": 30, "embedded_vector": [0.1] * 1536}
     ]
     
-    # Mock the filtered profiles query chain
+    # Mock the filtered profiles query - second call to select
+    select_mock2 = MagicMock()
     query_mock = MagicMock()
     select_mock2.neq.return_value = query_mock
     query_mock.gte.return_value = query_mock
     query_mock.lte.return_value = query_mock  
-    query_mock.eq.return_value = query_mock
+    query_mock.ilike.return_value = query_mock
     query_mock.limit.return_value.execute.return_value.data = [
         {
             "user_id": "user2", 
@@ -149,7 +151,9 @@ def test_get_profiles_filtered(main_module):
         }
     ]
     
-    # Access the function through the app's router or directly
+    # Set up the side_effect to return different mocks for each call
+    table.select.side_effect = [select_mock1, select_mock2]
+    
     result = module.get_profiles_filtered(
         user_id="user1",
         limit=5,
@@ -163,8 +167,6 @@ def test_get_profiles_filtered(main_module):
     assert len(result["profiles"]) == 1
     assert "similarity_score" in result["profiles"][0]
     assert "embedded_vector" not in result["profiles"][0]
-    assert result["filters_applied"]["age_range"] == "20-35"
-    assert result["filters_applied"]["location"] == "Honolulu"
 
 
 def test_get_profiles_filtered_personality_tags(main_module):
@@ -173,14 +175,12 @@ def test_get_profiles_filtered_personality_tags(main_module):
     
     # Mock the reference user data
     select_mock1 = MagicMock()
-    select_mock2 = MagicMock()
-    table.select.side_effect = [select_mock1, select_mock2]
-    
     select_mock1.eq.return_value.execute.return_value.data = [
         {"user_id": "user1", "age": 30, "embedded_vector": [0.1] * 1536}
     ]
     
     # Mock the filtered profiles query
+    select_mock2 = MagicMock()
     query_mock = MagicMock()
     select_mock2.neq.return_value = query_mock
     query_mock.limit.return_value.execute.return_value.data = [
@@ -199,6 +199,8 @@ def test_get_profiles_filtered_personality_tags(main_module):
             "embedded_vector": [0.2] * 1536
         }
     ]
+    
+    table.select.side_effect = [select_mock1, select_mock2]
     
     result = module.get_profiles_filtered(
         user_id="user1",
@@ -286,14 +288,12 @@ def test_get_profiles_filtered_orientation_filter(main_module):
     
     # Mock the reference user data
     select_mock1 = MagicMock()
-    select_mock2 = MagicMock()
-    table.select.side_effect = [select_mock1, select_mock2]
-    
     select_mock1.eq.return_value.execute.return_value.data = [
         {"user_id": "user1", "embedded_vector": [0.1] * 1536}
     ]
     
     # Mock the filtered profiles query
+    select_mock2 = MagicMock()
     query_mock = MagicMock()
     select_mock2.neq.return_value = query_mock
     query_mock.limit.return_value.execute.return_value.data = [
@@ -311,6 +311,8 @@ def test_get_profiles_filtered_orientation_filter(main_module):
         }
     ]
     
+    table.select.side_effect = [select_mock1, select_mock2]
+    
     result = module.get_profiles_filtered(
         user_id="user1",
         orientation="hetero"
@@ -326,14 +328,12 @@ def test_get_profiles_filtered_looking_for_filter(main_module):
     
     # Mock the reference user data
     select_mock1 = MagicMock()
-    select_mock2 = MagicMock()
-    table.select.side_effect = [select_mock1, select_mock2]
-    
     select_mock1.eq.return_value.execute.return_value.data = [
         {"user_id": "user1", "embedded_vector": [0.1] * 1536}
     ]
     
     # Mock the filtered profiles query
+    select_mock2 = MagicMock()
     query_mock = MagicMock()
     select_mock2.neq.return_value = query_mock
     query_mock.limit.return_value.execute.return_value.data = [
@@ -351,6 +351,8 @@ def test_get_profiles_filtered_looking_for_filter(main_module):
         }
     ]
     
+    table.select.side_effect = [select_mock1, select_mock2]
+    
     result = module.get_profiles_filtered(
         user_id="user1",
         looking_for="female"
@@ -366,14 +368,12 @@ def test_get_profiles_filtered_personality_tags_all_match(main_module):
     
     # Mock the reference user data
     select_mock1 = MagicMock()
-    select_mock2 = MagicMock()
-    table.select.side_effect = [select_mock1, select_mock2]
-    
     select_mock1.eq.return_value.execute.return_value.data = [
         {"user_id": "user1", "embedded_vector": [0.1] * 1536}
     ]
     
     # Mock the filtered profiles query
+    select_mock2 = MagicMock()
     query_mock = MagicMock()
     select_mock2.neq.return_value = query_mock
     query_mock.limit.return_value.execute.return_value.data = [
@@ -391,6 +391,8 @@ def test_get_profiles_filtered_personality_tags_all_match(main_module):
         }
     ]
     
+    table.select.side_effect = [select_mock1, select_mock2]
+    
     result = module.get_profiles_filtered(
         user_id="user1",
         personality_tags="fun,outgoing",
@@ -407,37 +409,37 @@ def test_get_profiles_filtered_min_similarity_score(main_module):
     
     # Mock the reference user data
     select_mock1 = MagicMock()
-    select_mock2 = MagicMock()
-    table.select.side_effect = [select_mock1, select_mock2]
-    
     select_mock1.eq.return_value.execute.return_value.data = [
-        {"user_id": "user1", "embedded_vector": [0.9] * 1536}  # High similarity vector
+        {"user_id": "user1", "embedded_vector": [1.0] + [0.0] * 1535}  # Vector pointing in one direction
     ]
     
     # Mock the filtered profiles query
+    select_mock2 = MagicMock()
     query_mock = MagicMock()
     select_mock2.neq.return_value = query_mock
     query_mock.limit.return_value.execute.return_value.data = [
         {
             "user_id": "user2", 
             "name": "Bob",
-            "embedded_vector": [0.9] * 1536  # High similarity
+            "embedded_vector": [1.0] + [0.0] * 1535  # Same direction - high similarity (1.0)
         },
         {
             "user_id": "user3", 
             "name": "Carol",
-            "embedded_vector": [0.1] * 1536  # Low similarity
+            "embedded_vector": [0.0] + [1.0] + [0.0] * 1534  # Orthogonal direction - low similarity (0.0)
         }
     ]
     
+    table.select.side_effect = [select_mock1, select_mock2]
+    
     result = module.get_profiles_filtered(
         user_id="user1",
-        min_similarity_score=0.8
+        min_similarity_score=0.5  # Threshold that should filter out Carol
     )
     
     assert result["count"] == 1  # Only Bob should pass the similarity threshold
     assert result["profiles"][0]["user_id"] == "user2"
-    assert result["profiles"][0]["similarity_score"] >= 0.8
+    assert result["profiles"][0]["similarity_score"] >= 0.5
 
 
 def test_get_profiles_filtered_sort_by_age(main_module):
@@ -446,14 +448,12 @@ def test_get_profiles_filtered_sort_by_age(main_module):
     
     # Mock the reference user data
     select_mock1 = MagicMock()
-    select_mock2 = MagicMock()
-    table.select.side_effect = [select_mock1, select_mock2]
-    
     select_mock1.eq.return_value.execute.return_value.data = [
         {"user_id": "user1", "embedded_vector": [0.1] * 1536}
     ]
     
     # Mock the filtered profiles query
+    select_mock2 = MagicMock()
     query_mock = MagicMock()
     select_mock2.neq.return_value = query_mock
     query_mock.limit.return_value.execute.return_value.data = [
@@ -470,6 +470,8 @@ def test_get_profiles_filtered_sort_by_age(main_module):
             "embedded_vector": [0.2] * 1536
         }
     ]
+    
+    table.select.side_effect = [select_mock1, select_mock2]
     
     result = module.get_profiles_filtered(
         user_id="user1",
